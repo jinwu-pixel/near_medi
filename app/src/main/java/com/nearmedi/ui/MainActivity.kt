@@ -48,16 +48,19 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (viewModel.hasLocationPermission()) {
-            viewModel.onPermissionGranted()
-            viewModel.loadNearbyHospitals()
-        } else {
-            locationPermissionRequest.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
+        // Only load on first creation, not on rotation
+        if (savedInstanceState == null) {
+            if (viewModel.hasLocationPermission()) {
+                viewModel.onPermissionGranted()
+                viewModel.loadNearbyHospitals()
+            } else {
+                locationPermissionRequest.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    )
                 )
-            )
+            }
         }
     }
 

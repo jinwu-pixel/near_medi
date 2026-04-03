@@ -1,6 +1,8 @@
 package com.nearmedi.data.parser
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class XmlParserTest {
@@ -81,5 +83,56 @@ class XmlParserTest {
 
         val result = XmlParser.parseHospitals(xml)
         assertEquals(0, result.size)
+    }
+
+    @Test
+    fun parseHospitals_apiError_throwsApiException() {
+        val xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <response>
+                <header>
+                    <resultCode>12</resultCode>
+                    <resultMsg>LIMITED NUMBER OF SERVICE REQUESTS EXCEEDS ERROR.</resultMsg>
+                </header>
+                <body/>
+            </response>
+        """.trimIndent()
+
+        try {
+            XmlParser.parseHospitals(xml)
+            fail("Expected ApiException")
+        } catch (e: ApiException) {
+            assertTrue(e.message!!.contains("12"))
+        }
+    }
+
+    @Test
+    fun parseHospitals_invalidCoordinates_skipsItem() {
+        val xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <response>
+                <header><resultCode>00</resultCode></header>
+                <body>
+                    <items>
+                        <item>
+                            <dutyName>해외병원</dutyName>
+                            <dutyAddr>해외주소</dutyAddr>
+                            <wgs84Lat>0.0</wgs84Lat>
+                            <wgs84Lon>0.0</wgs84Lon>
+                        </item>
+                        <item>
+                            <dutyName>정상병원</dutyName>
+                            <dutyAddr>서울</dutyAddr>
+                            <wgs84Lat>37.5</wgs84Lat>
+                            <wgs84Lon>127.0</wgs84Lon>
+                        </item>
+                    </items>
+                </body>
+            </response>
+        """.trimIndent()
+
+        val result = XmlParser.parseHospitals(xml)
+        assertEquals(1, result.size)
+        assertEquals("정상병원", result[0].name)
     }
 }

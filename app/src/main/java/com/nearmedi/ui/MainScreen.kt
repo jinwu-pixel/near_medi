@@ -168,10 +168,19 @@ fun MainScreen(
                             }
                         }
                         !state.isLoading && state.hospitals.isEmpty() -> {
-                            Text(
-                                text = "주변에 병원/약국이 없습니다",
+                            Column(
                                 modifier = Modifier.align(Alignment.Center),
-                            )
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    text = "주변에 병원/약국이 없습니다",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(onClick = onRefresh) {
+                                    Text("다시 검색")
+                                }
+                            }
                         }
                         else -> {
                             Column {
@@ -220,7 +229,7 @@ private fun PermissionDeniedContent(
     ) {
         Icon(
             imageVector = Icons.Default.LocationOn,
-            contentDescription = null,
+            contentDescription = "위치",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary,
         )
@@ -244,7 +253,7 @@ private fun PermissionDeniedContent(
         OutlinedButton(onClick = onOpenSettings) {
             Icon(
                 Icons.Default.Settings,
-                contentDescription = null,
+                contentDescription = "위치",
                 modifier = Modifier.size(18.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))

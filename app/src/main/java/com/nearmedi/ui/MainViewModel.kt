@@ -45,6 +45,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, hasLocationPermission = true)
 
+            if (!locationHelper.hasInternetConnection()) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "인터넷 연결을 확인해주세요"
+                )
+                return@launch
+            }
+
             val location = locationHelper.getCurrentLocation()
             if (location == null) {
                 _uiState.value = _uiState.value.copy(
@@ -62,7 +70,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (addressInfo == null) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "주소를 확인할 수 없습니다"
+                    error = "현재 위치가 한국 내가 아니거나\n주소를 확인할 수 없습니다"
                 )
                 return@launch
             }
@@ -81,7 +89,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "데이터를 불러올 수 없습니다: ${e.message}"
+                    error = e.message ?: "데이터를 불러올 수 없습니다"
                 )
             }
         }

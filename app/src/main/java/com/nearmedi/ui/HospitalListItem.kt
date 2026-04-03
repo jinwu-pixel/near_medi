@@ -73,7 +73,10 @@ fun HospitalListItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.clickable { onCallPhone(hospital.tel) },
+                        modifier = Modifier
+                            .clickable { onCallPhone(hospital.tel) }
+                            .defaultMinSize(minHeight = 36.dp)
+                            .wrapContentHeight(Alignment.CenterVertically),
                     )
                 }
             }

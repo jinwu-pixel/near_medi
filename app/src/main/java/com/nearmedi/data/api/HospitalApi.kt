@@ -6,6 +6,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import java.util.concurrent.TimeUnit
 
 interface HospitalApi {
 
@@ -19,7 +20,7 @@ interface HospitalApi {
     ): String
 
     companion object {
-        private const val BASE_URL = "http://apis.data.go.kr/B552657/HsptlAsembySearchService/"
+        private const val BASE_URL = "https://apis.data.go.kr/B552657/HsptlAsembySearchService/"
 
         fun create(): HospitalApi {
             val logging = HttpLoggingInterceptor().apply {
@@ -27,6 +28,9 @@ interface HospitalApi {
             }
             val client = OkHttpClient.Builder()
                 .addInterceptor(logging)
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
+                .writeTimeout(15, TimeUnit.SECONDS)
                 .build()
 
             return Retrofit.Builder()
