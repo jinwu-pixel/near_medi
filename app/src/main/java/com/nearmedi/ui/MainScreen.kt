@@ -5,13 +5,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -20,6 +24,17 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.launch
+
+private data class TabInfo(
+    val category: CategoryFilter,
+    val icon: ImageVector,
+)
+
+private val tabs = listOf(
+    TabInfo(CategoryFilter.ALL, Icons.Default.MedicalServices),
+    TabInfo(CategoryFilter.HOSPITAL, Icons.Default.LocalHospital),
+    TabInfo(CategoryFilter.PHARMACY, Icons.Default.LocalPharmacy),
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +46,7 @@ fun MainScreen(
     onCallPhone: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onRequestPermission: () -> Unit,
+    onCategoryChange: (CategoryFilter) -> Unit,
 ) {
     val myPosition = LatLng(state.myLat, state.myLon)
     val cameraPositionState = rememberCameraPositionState {
@@ -38,6 +54,7 @@ fun MainScreen(
     }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val filtered = state.filteredHospitals
 
     // Move camera when location updates
     LaunchedEffect(state.myLat, state.myLon) {
@@ -49,14 +66,19 @@ fun MainScreen(
     // Move camera when a hospital is selected from the list
     LaunchedEffect(state.selectedHospitalIndex) {
         val index = state.selectedHospitalIndex
-        if (index in state.hospitals.indices) {
-            val hospital = state.hospitals[index]
+        if (index in filtered.indices) {
+            val hospital = filtered[index]
             cameraPositionState.animate(
                 CameraUpdateFactory.newLatLngZoom(
                     LatLng(hospital.lat, hospital.lon), 16f
                 )
             )
         }
+    }
+
+    // Reset list scroll when category changes
+    LaunchedEffect(state.categoryFilter) {
+        listState.scrollToItem(0)
     }
 
     Scaffold(
@@ -91,7 +113,7 @@ fun MainScreen(
                     .fillMaxSize()
                     .padding(paddingValues),
             ) {
-                // Map area (top 50%)
+                // Map area (top ~45%)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -103,7 +125,7 @@ fun MainScreen(
                         properties = MapProperties(isMyLocationEnabled = state.hasLocationPermission),
                         uiSettings = MapUiSettings(myLocationButtonEnabled = state.hasLocationPermission),
                     ) {
-                        state.hospitals.forEachIndexed { index, hospital ->
+                        filtered.forEachIndexed { index, hospital ->
                             val isPharmacy = hospital.type.contains("약국")
                             val isSelected = index == state.selectedHospitalIndex
                             Marker(
@@ -120,7 +142,7 @@ fun MainScreen(
                                     coroutineScope.launch {
                                         listState.animateScrollToItem(index)
                                     }
-                                    false // show info window
+                                    false
                                 },
                             )
                         }
@@ -148,7 +170,33 @@ fun MainScreen(
                     }
                 }
 
-                // List area (bottom 50%)
+                // Category tabs
+                if (state.hospitals.isNotEmpty()) {
+                    val selectedTabIndex = tabs.indexOfFirst { it.category == state.categoryFilter }
+                    TabRow(selectedTabIndex = selectedTabIndex) {
+                        tabs.forEach { tab ->
+                            val count = when (tab.category) {
+                                CategoryFilter.ALL -> state.hospitals.size
+                                CategoryFilter.HOSPITAL -> state.hospitals.count { !it.type.contains("약국") }
+                                CategoryFilter.PHARMACY -> state.hospitals.count { it.type.contains("약국") }
+                            }
+                            Tab(
+                                selected = state.categoryFilter == tab.category,
+                                onClick = { onCategoryChange(tab.category) },
+                                text = { Text("${tab.category.label} $count") },
+                                icon = {
+                                    Icon(
+                                        tab.icon,
+                                        contentDescription = tab.category.label,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+
+                // List area (bottom ~55%)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -160,50 +208,42 @@ fun MainScreen(
                                 modifier = Modifier.align(Alignment.Center),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Text(state.error)
+                                Text(state.error, textAlign = TextAlign.Center)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Button(onClick = onRetry) {
                                     Text("재시도")
                                 }
                             }
                         }
-                        !state.isLoading && state.hospitals.isEmpty() -> {
+                        !state.isLoading && filtered.isEmpty() -> {
                             Column(
                                 modifier = Modifier.align(Alignment.Center),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 Text(
-                                    text = "주변에 병원/약국이 없습니다",
+                                    text = if (state.hospitals.isEmpty())
+                                        "주변에 병원/약국이 없습니다"
+                                    else
+                                        "해당 카테고리에 결과가 없습니다",
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedButton(onClick = onRefresh) {
-                                    Text("다시 검색")
+                                if (state.hospitals.isEmpty()) {
+                                    OutlinedButton(onClick = onRefresh) {
+                                        Text("다시 검색")
+                                    }
                                 }
                             }
                         }
                         else -> {
-                            Column {
-                                // Result count header
-                                if (state.hospitals.isNotEmpty()) {
-                                    Text(
-                                        text = "검색결과 ${state.hospitals.size}건",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(
-                                            start = 16.dp, top = 8.dp, bottom = 4.dp,
-                                        ),
+                            LazyColumn(state = listState) {
+                                itemsIndexed(filtered) { index, hospital ->
+                                    HospitalListItem(
+                                        hospital = hospital,
+                                        isSelected = index == state.selectedHospitalIndex,
+                                        onClick = { onHospitalClick(index) },
+                                        onCallPhone = onCallPhone,
                                     )
-                                }
-                                LazyColumn(state = listState) {
-                                    itemsIndexed(state.hospitals) { index, hospital ->
-                                        HospitalListItem(
-                                            hospital = hospital,
-                                            isSelected = index == state.selectedHospitalIndex,
-                                            onClick = { onHospitalClick(index) },
-                                            onCallPhone = onCallPhone,
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -253,7 +293,7 @@ private fun PermissionDeniedContent(
         OutlinedButton(onClick = onOpenSettings) {
             Icon(
                 Icons.Default.Settings,
-                contentDescription = "위치",
+                contentDescription = "설정",
                 modifier = Modifier.size(18.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))

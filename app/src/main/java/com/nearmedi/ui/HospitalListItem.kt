@@ -1,10 +1,16 @@
 package com.nearmedi.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +31,8 @@ fun HospitalListItem(
     onCallPhone: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val isPharmacy = hospital.type.contains("약국")
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -43,10 +51,36 @@ fun HospitalListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(12.dp),
             verticalAlignment = Alignment.Top,
         ) {
+            // Category icon
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = if (isPharmacy)
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        else
+                            MaterialTheme.colorScheme.primaryContainer,
+                        shape = CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (isPharmacy) Icons.Default.LocalPharmacy
+                    else Icons.Default.LocalHospital,
+                    contentDescription = if (isPharmacy) "약국" else "병원",
+                    tint = if (isPharmacy)
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    else
+                        MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -80,6 +114,7 @@ fun HospitalListItem(
                     )
                 }
             }
+
             Text(
                 text = formatDistance(hospital.distance),
                 style = MaterialTheme.typography.labelMedium,

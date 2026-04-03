@@ -10,6 +10,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+enum class CategoryFilter(val label: String) {
+    ALL("전체"),
+    HOSPITAL("병원/의원"),
+    PHARMACY("약국"),
+}
+
 data class MainUiState(
     val hospitals: List<Hospital> = emptyList(),
     val myLat: Double = 37.5665,
@@ -19,7 +25,15 @@ data class MainUiState(
     val hasLocationPermission: Boolean = false,
     val permissionDenied: Boolean = false,
     val selectedHospitalIndex: Int = -1,
-)
+    val categoryFilter: CategoryFilter = CategoryFilter.ALL,
+) {
+    val filteredHospitals: List<Hospital>
+        get() = when (categoryFilter) {
+            CategoryFilter.ALL -> hospitals
+            CategoryFilter.HOSPITAL -> hospitals.filter { !it.type.contains("약국") }
+            CategoryFilter.PHARMACY -> hospitals.filter { it.type.contains("약국") }
+        }
+}
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -39,6 +53,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectHospital(index: Int) {
         _uiState.value = _uiState.value.copy(selectedHospitalIndex = index)
+    }
+
+    fun setCategory(category: CategoryFilter) {
+        _uiState.value = _uiState.value.copy(categoryFilter = category, selectedHospitalIndex = -1)
     }
 
     fun loadNearbyHospitals() {

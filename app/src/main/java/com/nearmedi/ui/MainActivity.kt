@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
                     onCallPhone = { tel -> dialPhone(tel) },
                     onOpenSettings = { openAppSettings() },
                     onRequestPermission = { requestLocationPermission() },
+                    onCategoryChange = { category -> viewModel.setCategory(category) },
                 )
             }
         }
