@@ -1,7 +1,10 @@
 package com.nearmedi.ui
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,7 +23,10 @@ class MainActivity : ComponentActivity() {
         val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (granted) {
+            viewModel.onPermissionGranted()
             viewModel.loadNearbyHospitals()
+        } else {
+            viewModel.onPermissionDenied()
         }
     }
 
@@ -33,11 +39,17 @@ class MainActivity : ComponentActivity() {
                 MainScreen(
                     state = state,
                     onRetry = { viewModel.loadNearbyHospitals() },
+                    onRefresh = { viewModel.loadNearbyHospitals() },
+                    onHospitalClick = { index -> viewModel.selectHospital(index) },
+                    onCallPhone = { tel -> dialPhone(tel) },
+                    onOpenSettings = { openAppSettings() },
+                    onRequestPermission = { requestLocationPermission() },
                 )
             }
         }
 
         if (viewModel.hasLocationPermission()) {
+            viewModel.onPermissionGranted()
             viewModel.loadNearbyHospitals()
         } else {
             locationPermissionRequest.launch(
@@ -47,5 +59,26 @@ class MainActivity : ComponentActivity() {
                 )
             )
         }
+    }
+
+    private fun dialPhone(tel: String) {
+        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$tel"))
+        startActivity(intent)
+    }
+
+    private fun openAppSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", packageName, null)
+        }
+        startActivity(intent)
+    }
+
+    private fun requestLocationPermission() {
+        locationPermissionRequest.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            )
+        )
     }
 }

@@ -16,6 +16,9 @@ data class MainUiState(
     val myLon: Double = 126.9780,
     val isLoading: Boolean = false,
     val error: String? = null,
+    val hasLocationPermission: Boolean = false,
+    val permissionDenied: Boolean = false,
+    val selectedHospitalIndex: Int = -1,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -26,9 +29,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState
 
+    fun onPermissionGranted() {
+        _uiState.value = _uiState.value.copy(hasLocationPermission = true, permissionDenied = false)
+    }
+
+    fun onPermissionDenied() {
+        _uiState.value = _uiState.value.copy(permissionDenied = true, hasLocationPermission = false)
+    }
+
+    fun selectHospital(index: Int) {
+        _uiState.value = _uiState.value.copy(selectedHospitalIndex = index)
+    }
+
     fun loadNearbyHospitals() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, hasLocationPermission = true)
 
             val location = locationHelper.getCurrentLocation()
             if (location == null) {
