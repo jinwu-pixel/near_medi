@@ -1,0 +1,76 @@
+package com.nearmedi.ui
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.nearmedi.data.model.Hospital
+import com.nearmedi.data.repository.HospitalRepository
+import com.nearmedi.util.LocationHelper
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+data class MainUiState(
+    val hospitals: List<Hospital> = emptyList(),
+    val myLat: Double = 37.5665,
+    val myLon: Double = 126.9780,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+)
+
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val locationHelper = LocationHelper(application)
+    private val repository = HospitalRepository()
+
+    private val _uiState = MutableStateFlow(MainUiState())
+    val uiState: StateFlow<MainUiState> = _uiState
+
+    fun loadNearbyHospitals() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
+            val location = locationHelper.getCurrentLocation()
+            if (location == null) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "위치를 확인할 수 없습니다"
+                )
+                return@launch
+            }
+
+            val lat = location.latitude
+            val lon = location.longitude
+            _uiState.value = _uiState.value.copy(myLat = lat, myLon = lon)
+
+            val addressInfo = locationHelper.getAddressInfo(lat, lon)
+            if (addressInfo == null) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "주소를 확인할 수 없습니다"
+                )
+                return@launch
+            }
+
+            try {
+                val hospitals = repository.searchNearby(
+                    sido = addressInfo.sido,
+                    sigungu = addressInfo.sigungu,
+                    myLat = lat,
+                    myLon = lon,
+                )
+                _uiState.value = _uiState.value.copy(
+                    hospitals = hospitals,
+                    isLoading = false,
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "데이터를 불러올 수 없습니다: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun hasLocationPermission(): Boolean = locationHelper.hasLocationPermission()
+}
